@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config
+  namespace: oob
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-config
+  template:
+    metadata:
+      labels:
+        app: nginx-config
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+      - name: nginx
+        image: nginx:latest
+        volumeMounts:
+        - name: config-volume
+          mountPath: /usr/share/nginx/html/targets.json
+          subPath: targets.json
+      volumes:
+      - name: config-volume
+        configMap:
+          name: inventory-json
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config
+  namespace: oob
+spec:
+  selector:
+    app: nginx-config
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80

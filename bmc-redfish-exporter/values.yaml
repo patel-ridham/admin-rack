@@ -1,0 +1,93 @@
+prometheus:
+  prometheusSpec:
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: cephfs
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+    retention: 15d
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    tolerations:
+     - key: "node-role.kubernetes.io/control-plane"
+       operator: "Exists"
+       effect: "NoSchedule"
+    additionalScrapeConfigs: |
+      - job_name: 'sensors'
+        metrics_path: /collect
+        scheme: http
+
+        http_sd_configs:
+          - url: http://config.oob.svc.cluster.local/targets.json
+            refresh_interval: 1m
+
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: .+--(.+)--.+--.+--.+
+            target_label: instance
+            replacement: $1
+            action: replace
+
+          - source_labels: [__address__]
+            regex: .+--.+--(.+)--.+--.+
+            target_label: __param_node
+            replacement: $1
+            action: replace
+
+          - source_labels: [__address__]
+            regex: .+--.+--.+--(.+)--.+
+            target_label: __param_username
+            replacement: $1
+            action: replace
+
+          - source_labels: [__address__]
+            regex: .+--.+--.+--.+--(.+)
+            target_label: __param_password
+            replacement: $1
+            action: replace
+
+          - target_label: __address__
+            replacement: bmc-redfish-exporter.oob.svc.cluster.local:8080
+            action: replace
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      node-role.kubernetes.io/control-plane: ""
+    tolerations:
+     - key: "node-role.kubernetes.io/control-plane"
+       operator: "Exists"
+       effect: "NoSchedule"
+grafana:
+  persistence:
+    enabled: true
+    size: 10Gi
+    type: sts
+    storageClassName: cephfs
+    accessModes:
+      - ReadWriteOnce
+  adminPassword: "admin"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  tolerations:
+   - key: "node-role.kubernetes.io/control-plane"
+     operator: "Exists"
+     effect: "NoSchedule"
+
+prometheusOperator:
+  tolerations:
+   - key: "node-role.kubernetes.io/control-plane"
+     operator: "Exists"
+     effect: "NoSchedule"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+
+kube-state-metrics:
+  tolerations:
+   - key: "node-role.kubernetes.io/control-plane"
+     operator: "Exists"
+     effect: "NoSchedule"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""

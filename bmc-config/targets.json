@@ -1,0 +1,10 @@
+[
+  {
+        "targets": [
+            "ironic--bmc1.intel.local--10.173.192.104--ZGVidWd1c2Vy--MHBlbkJtYzE=",
+            "ironic--bmc2.intel.local--10.173.192.103--ZGVidWd1c2Vy--MHBlbkJtYzE=",
+            "ironic--bmc3.intel.local--10.173.192.106--ZGVidWd1c2Vy--MHBlbkJtYzE=",
+            "ironic--bmc4.intel.local--10.173.192.82--ZGVidWd1c2Vy--MHBlbkJtYzE="
+        ]
+  }
+]

@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-redfish-exporter
+  namespace: oob
+  labels:
+    app: bmc-redfish-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-redfish-exporter
+  template:
+    metadata:
+      labels:
+        app: bmc-redfish-exporter
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-redfish-exporter
+          image: registry.intel.local:5000/bmc-redfish-exporter:0.1.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bmc-redfish-exporter
+  namespace: oob
+spec:
+  type: ClusterIP
+  selector:
+    app: bmc-redfish-exporter
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
