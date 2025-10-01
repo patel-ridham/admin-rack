@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-journal-exporter
+  namespace: oob
+  labels:
+    app: bmc-journal-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-journal-exporter
+  template:
+    metadata:
+      labels:
+        app: bmc-journal-exporter
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-journal-exporter
+          image: registry.intel.local:5000/bmc-journal-collector:0.1.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: INVENTORY_FILE
+              value: "/inventory/targets.json"
+          volumeMounts:
+            - name: inventory-volume
+              mountPath: "/inventory"
+            - name: tmp-logs
+              mountPath: /tmp
+        - name: fluentd-sidecar
+          image: registry.intel.local:5000/fluentd-kafka:v1
+          env:
+            - name: FLUENTD_CONF
+              value: "fluentd-kafka.conf"
+          volumeMounts:
+            - name: tmp-logs
+              mountPath: /logs
+            - name: fluentd-config-journal
+              mountPath: /fluentd/etc
+      volumes:
+        - name: inventory-volume
+          configMap:
+            name: inventory-json
+        - name: tmp-logs
+          emptyDir: {}
+        - name: fluentd-config-journal
+          configMap:
+            name: fluentd-config-journal

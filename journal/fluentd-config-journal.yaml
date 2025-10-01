@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config-journal
+  namespace: oob
+data:
+  fluentd-kafka.conf: |
+    <source>
+      @type tail
+      path /logs/*.log
+      pos_file /fluentdout/fluentd-bmc-logs.pos
+      read_from_head true
+      tag bmc.logs
+      <parse>
+          @type regexp
+          expression /^(?<host>[^ ]+) (?<collection_time>[^ ]+) (?<collector_start_epoch>[^ ]+) (?<collector_counter>[^ ]+) (?<event_id>[^ ]+) (?<event_time>[^ ]+) (?<message>.*)/
+          time_key collection_time
+          time_type float
+          types collector_start_epoch:float,collector_counter:integer,event_time:integer
+      </parse>
+    </source>
+    <match bmc.logs>
+      @type kafka2
+      brokers kafka-release-controller-0.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-1.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-2.kafka-release-controller-headless.kafka.svc.cluster.local:9092
+      default_topic bmc_journal
+      <format>
+        @type json
+      </format>
+      <inject>
+          time_key event_time
+          time_type string
+          time_format %Y-%m-%dT%H:%M:%S.%NZ
+      </inject>
+      <buffer>
+        flush_interval 5s
+      </buffer>
+    </match>
