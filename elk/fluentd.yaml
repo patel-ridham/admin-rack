@@ -1,0 +1,594 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-json-ib
+  namespace: oob
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      @id fluentd-containers.log
+      path /var/log/containers/*.log
+      pos_file /var/log/es-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type multi_format
+        <pattern>
+          format json
+          time_key time
+          time_type string
+          time_format "%Y-%m-%dT%H:%M:%S.%N%:z"
+        </pattern>
+        <pattern>
+          format regexp
+          expression /^(?<time>\S+) (?<stream>stdout|stderr) [^ ]* (?<log>.*)$/
+          time_key time
+          time_type string
+          time_format '%Y-%m-%dT%H:%M:%S.%N%:z'
+        </pattern>
+      </parse>
+    </source>
+
+    <match kubernetes.var.log.containers.**registry**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**bmc**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**calico-node**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**calico-typha**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**coredns**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**csi-wekafs**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**weka-cluster-exporter**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**gitea**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**fluent**.log>
+      @type null
+    </match>
+
+
+    <match kubernetes.var.log.containers.**kube-proxy**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**metric-exporter**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**metrics-server**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**kuberay-operator**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**metallb-controller**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**nginx-proxy**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**node-feature-discovery**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**node-labels-to-files**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**node-cluster-scope**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**nodelocaldns**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**prometheus-stack**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**flux-system**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**kustomize-controller**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**kubernetes-metrics-scraper**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**calico-kube-controllers**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**csi**.log>
+      @type null
+    </match>
+
+    <match kubernetes.var.log.containers.**kafka**.log>
+      @type null
+    </match>
+
+    <filter kubernetes.** serialconsole>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+      # why these two????
+      #skip_namespace_metadata true
+      #skip_master_url true
+    </filter>
+
+    <filter serialconsole>
+      @type record_transformer
+      <record>
+        fluentdtag tag
+      </record>
+    </filter>
+
+
+    <source>
+      @id cscope_metadata_file
+      @type tail
+      path /var/log/atscale/cscope-metadata.ndjson
+      format json
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.cscope
+    </source>
+
+    <match kubernetes.var.log.containers.**launcher**>
+      @type rewrite_tag_filter
+      <rule>
+        key log
+        pattern /.+/
+        tag mpi.default
+      </rule>
+    </match>
+
+    <filter mpi.date>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*\[(?<date>\d{4}-\d{2}-\d{2}\ [\d\:]*)\].*/
+        types date:string
+      </parse>
+    </filter>
+
+    <filter mpi.date_workload_worker>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*\[(?<date>\d{4}-\d{2}-\d{2}\ [\d\:]*)\][\s]*(?<workload>[a-zA-Z\-\d]*)-(?<worker>worker-[\d]*):.*/
+        types date:string, workload:string, worker:string
+      </parse>
+    </filter>
+
+    <filter mpi.worker>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*(?<workload>[a-zA-Z\-\d]*)-(?<worker>worker-[\d]*):.*/
+        types workload:string, worker:string
+      </parse>
+    </filter>
+
+    <filter mpi.pod_worker>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*\[(?<date>\d{4}-\d{2}-\d{2}\ [\d\:]*)\][\s]*(?<pod>[a-zA-Z\-\d]*-worker-[\d]*):.*/
+        types pod:string
+      </parse>
+    </filter>
+
+    <filter mpi.rank>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*\[(?<x>\d*),(?<rank>\d*)\]\<(?<stream>stdout|stderr)\>\:.*/
+        types x:string, rank:string, stream:string
+      </parse>
+    </filter>
+
+    <filter mpi.result>
+      @type parser
+      key_name log
+      reserve_data true
+      reserve_time true
+      inject_key_prefix mpi.
+      <parse>
+        @type regexp
+        expression /^[\s]*\[(?<date>\d{4}-\d{2}-\d{2}[\s]*[\d\:]*)\][\s]*\[(?<date2>\d{4}-\d{2}-\d{2}[\s]*[\d\:]*)\][\s]*iteration[\s]*(?<iteration>\d*)\/[\s]*(?<total_iterations>\d*)[\s|\|]*actual[\s]*seqlen\:[\s]*(?<actual_seqlen>\d*)[\s|\|]*consumed[\s]*samples\:[\s]*(?<consumed_samples>\d*)[\s|\|]*elapsed[\s]*time[\s]*per[\s]*iteration[\s]*\(ms\)\:[\s]*(?<elapsed_time_per_iteration_ms>[\d|\.]*)[\s|\|]*samples[\s]*per[\s]*second\:[\s]*(?<samples_per_second>[\d|\.]*)[\s|\|]*tokens[\s]*per[\s]*second\:[\s]*(?<tokens_per_second>[\d|\.]*)[\s|\|]*throughput[\s]*per[\s]*GPU[\s]*\(TFLOP\/s\/GPU\)\:[\s]*(?<throughput_per_GPU>[\d|\.]*)[\s|\|]*learning[\s]*rate\:[\s]*(?<learning_rate>[\d|\.|E|\+|\-]*)[\s|\|]*global[\s]*batch[\s]*size\:[\s]*(?<global_batch_size>\d*)[\s|\|]*lm[\s]*loss\:[\s]*(?<lm_loss>[\d|\.|E|\+|\-]*)[\s|\|]*loss[\s]*scale\:[\s]*(?<loss_scale>[\d|\.|E|\+|\-]*)[\s|\|]*grad[\s]*norm\:[\s]*(?<grad_norm>[\d|.]*)[\s|\|]*number[\s]*of[\s]*skipped[\s]*iterations\:[\s]*(?<num_skipped_iterations>\d*)[\s|\|]*number[\s]*of[\s]*nan[\s]*iterations\:[\s]*(?<num_nan_iterations>\d*).*/
+        types iteration:integer, total_iterations:integer, actual_seqlen:integer, consumed_samples:integer,elapsed_time_iteration_ms:float, samples_per_second:float, token_per_second:float, throughput_per_gpu:float, learning_rate:string, global_batch_size:integer, lm_loss:string, loss_scale:float, grad_norm:float, num_skipped_iterations:integer, num_nan_iterations:integer
+      </parse>
+    </filter>
+
+
+    <filter **>
+      @type record_modifier
+      prepare_value $cscope_metadata = Hash.new
+
+      <record>
+        __dummy1__ ${(tag == 'metadata.cscope') ? ($cscope_metadata=record.clone) : nil}
+      </record>
+
+    # If the log doesn't have a field called "metadata", add an empty hash
+      <record>
+        __dummy2__ ${!tag.start_with?('metadata.') && !record.key?("metadata") ? record["metadata"]=Hash.new : nil}
+      </record>
+
+    # Copy cached metadata to log
+      <record>
+        __dummy3__ ${(!tag.start_with?('metadata.') && !$cscope_metadata.nil?) ? record["metadata"]["cscope"]=$cscope_metadata : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy2__, __dummy3__
+
+    </filter>
+
+    <source>
+      @id test_meta_file
+      @type tail
+      path /var/log/atscale/test-metadata.ndjson
+      format json
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.test
+    </source>
+
+    # Add test metadata
+    # __dummy*__ are temporary keys that will be discarded later
+    # Instead of assigning values to these keys, we have ruby snippet that will update record with metadata
+    <filter **>
+      @type record_modifier
+      prepare_value $test_metadata = Hash.new
+
+      # Cache metadata in global variable
+      <record>
+        __dummy1__ ${(tag == 'metadata.test') ? ($test_metadata=record.clone) : nil}
+      </record>
+
+      # If the log doesn't have a field called "metadata", add an empty hash
+      <record>
+        __dummy2__ ${!tag.start_with?('metadata.') && !record.key?("metadata") ? record["metadata"]=Hash.new : nil}
+      </record>
+
+      # Copy cached metadata to log
+      <record>
+        __dummy3__ ${ (!tag.start_with?('metadata.') && !$test_metadata.nil?) ? record["metadata"]["test"]=$test_metadata : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy2__, __dummy3__
+
+    </filter>
+
+    <source>
+      @id pool_meta_file
+      @type tail
+      path /var/log/atscale/pools.json
+      format json
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.pools
+      #@log_level debug
+    </source>
+
+    <source>
+      @id worker_meta_file
+      @type tail
+      path /var/log/atscale/workers.json
+      format json
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.workers
+      #@log_level debug
+    </source>
+
+    # Add worker metadata
+    # __dummy*__ are temporary keys that will be discarded later
+    # Instead of assigning values to these keys, we have ruby snippet that will update record with metadata
+    <filter **>
+      @type record_modifier
+      prepare_value $worker_metadata = Hash.new
+      prepare_value $pool_metadata = Hash.new
+
+      # Cache metadata in global variable
+      <record>
+        __dummy1__ ${(tag == 'metadata.workers') ? ($worker_metadata=record.clone) : nil}
+      </record>
+
+      # If the log doesn't have a field called "metadata", add an empty hash
+      <record>
+        __dummy2__ ${(tag == 'mpi' && !record.key?("metadata")) ? record["metadata"]=Hash.new : nil}
+      </record>
+
+      # Copy cached metadata to log
+      <record>
+        __dummy3__ ${(tag == 'mpi' && !$worker_metadata.nil?) ? record["metadata"]["mpi"]=$worker_metadata : nil}
+      </record>
+
+      <record>
+        __dummy4__ ${tag.start_with?('mpi') && !record['mpi.pod'].nil? && !$worker_metadata[record['mpi.pod']].nil? && record['kubernetes']['namespace_name'] == $worker_metadata[record['mpi.pod']]['namespace'] ? record['mpi.node']=$worker_metadata[record['mpi.pod']]['node'] : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy2__, __dummy3__, __dummy4__
+    </filter>
+
+    # Add pool metadata
+    # __dummy*__ are temporary keys that will be discarded later
+    # Instead of assigning values to these keys, we have ruby snippet that will update record with metadata
+    <filter **>
+      @type record_modifier
+      prepare_value $worker_metadata = Hash.new
+      prepare_value $pool_metadata = Hash.new
+
+      <record>
+        __dummy1__ ${(tag == 'metadata.pools') ? ($pool_metadata=record.clone) : nil}
+      </record>
+
+      <record>
+        __dummy2__ ${tag.start_with?('mpi') && !record['mpi.node'].nil? && !$pool_metadata[record['mpi.node']].nil? ? record['mpi.pool']=$pool_metadata[record['mpi.node']] : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy2__
+    </filter>
+
+    <source>
+      @id workload_meta_file
+      @type tail
+      path /var/log/atscale/workloads
+      <parse>
+        @type regexp
+        expression /^(?<workloads>.*)$/
+      </parse>
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.workloads
+    </source>
+
+    # Add workload metadata
+    # __dummy*__ are temporary keys that will be discarded later
+    # Instead of assigning values to these keys, we have ruby snippet that will update record with metadata
+    <filter **>
+      @type record_modifier
+      prepare_value $workloads_metadata = Hash.new
+
+      <record>
+        __dummy1__ ${(tag == 'metadata.workloads') ? ($workloads_metadata=record.clone) : nil}
+      </record>
+
+      #<record>
+      #  __dummy2__ ${(!tag.start_with?('mpi') && !record.key?("mpi")) ? record["mpi"]=Hash.new : nil}
+      #</record>
+
+      <record>
+        __dummy3__ ${(!tag.start_with?('metadata.')) ? record["mpi.node_workloads"]=$workloads_metadata['workloads'] : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy3__
+    </filter>
+
+    <source>
+      @id ip_meta_file
+      @type tail
+      path /var/log/atscale/ip
+      <parse>
+        @type regexp
+        expression /^(?<ip>.*)$/
+      </parse>
+      read_lines_limit 1
+      read_from_head true
+      tag metadata.ip
+    </source>
+
+    <filter **>
+      @type record_modifier
+      prepare_value $ip_metadata = Hash.new
+
+      <record>
+        __dummy1__ ${(tag == 'metadata.ip') ? ($ip_metadata=record.clone) : nil}
+      </record>
+
+      <record>
+        __dummy2__ ${(!tag.start_with?('metadata.')) ? record["ip"]=$ip_metadata['ip'] : nil}
+      </record>
+
+      remove_keys __dummy1__, __dummy2__
+    </filter>
+
+    <match metadata.**>
+      @type null
+    </match>
+
+
+    <match kubernetes.** serialconsole mpi mpi.**>
+      @type kafka2
+      @id out_kafka2
+
+      brokers "#{ENV['FLUENT_KAFKA2_BROKERS']}"
+
+      default_topic "#{ENV['FLUENT_KAFKA2_DEFAULT_TOPIC'] || nil}"
+      default_partition_key "#{ENV['FLUENT_KAFKA2_DEFAULT_PARTITION_KEY'] || nil}"
+      default_message_key "#{ENV['FLUENT_KAFKA2_DEFAULT_MESSAGE_KEY'] || nil}"
+      exclude_topic_key "#{ENV['FLUENT_KAFKA2_EXCLUDE_TOPIC_KEY'] || false}"
+      exclude_partition_key "#{ENV['FLUENT_KAFKA2_EXCLUDE_PARTITION_KEY'] || false}"
+      get_kafka_client_log "#{ENV['FLUENT_KAFKA2_GET_KAFKA_CLIENT_LOG'] || false}"
+      <format>
+        @type "#{ENV['FLUENT_KAFKA2_OUTPUT_FORMAT_TYPE'] || 'json'}"
+      </format>
+      <inject>
+        tag_key "#{ENV['FLUENT_KAFKA2_OUTPUT_TAG_KEY'] || use_nil}"
+        time_key "#{ENV['FLUENT_KAFKA2_OUTPUT_TIME_KEY'] || use_nil}"
+      </inject>
+      <buffer>
+        @type file
+        path /fluentdout/kafka.buffer
+        flush_interval 30s
+        retry_forever true
+        retry_max_interval 120000
+        chunk_limit_size 1M
+        chunk_full_threshold 0.5
+        overflow_action drop_oldest_chunk
+      </buffer>
+
+      max_send_retries "#{ENV['FLUENT_KAFKA2_MAX_SEND_RETRIES'] || 1}"
+      required_acks "#{ENV['FLUENT_KAFKA2_REQUIRED_ACKS'] || -1}"
+      ack_timeout "#{ENV['FLUENT_KAFKA2_ACK_TIMEOUT'] || nil}"
+      compression_codec "#{ENV['FLUENT_KAFKA2_COMPRESSION_CODEC'] || nil}"
+      max_send_limit_bytes "#{ENV['FLUENT_KAFKA2_MAX_SEND_LIMIT_BYTES'] || nil}"
+      discard_kafka_delivery_failed "#{ENV['FLUENT_KAFKA2_DISCARD_KAFKA_DELIVERY_FAILED'] || false}"
+    </match>
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluentd-ib
+  namespace: oob
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd-ib
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fluentd-ib
+roleRef:
+  kind: ClusterRole
+  name: fluentd-ib
+    #apiGroup: rbac.authorization.k8s.io
+  apiGroup: ""
+subjects:
+- kind: ServiceAccount
+  name: fluentd-ib
+  apiGroup: ""
+  namespace: oob
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd-ib
+  namespace: oob
+  labels:
+    k8s-app: fluentd-logging-ib
+    version: v1
+spec:
+  selector:
+    matchLabels:
+      k8s-app: fluentd-logging-ib
+      version: v1
+  template:
+    metadata:
+      labels:
+        k8s-app: fluentd-logging-ib
+        version: v1
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '24232'
+    spec:
+      #nodeSelector:
+      #  fluentd: "yes"
+      serviceAccount: fluentd-ib
+      serviceAccountName: fluentd-ib
+      containers:
+      - name: fluentd
+        image: fluent/fluentd-kubernetes-daemonset:v1.17.1-debian-kafka2-1.0
+        env:
+          - name: K8S_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name:  FLUENT_KAFKA2_BROKERS
+            value: "kafka-release-controller-0.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-1.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-2.kafka-release-controller-headless.kafka.svc.cluster.local:9092"
+          - name:  FLUENT_KAFKA2_DEFAULT_TOPIC
+            value: "qpool_raw"
+          - name:  FLUENTD_PROMETHEUS_CONF
+            value: "disable"
+          - name:  FLUENTD_SYSTEMD_CONF
+            value: "disable"
+          - name:  FLUENT_KAFKA2_COMPRESSION_CODEC
+            value: "gzip"
+          - name:  FLUENT_KAFKA2_MAX_SEND_LIMIT_BYTES
+            value: "1000000"
+        volumeMounts:
+        - name: fluentdjson
+          mountPath: /fluentd/etc
+          readOnly: true
+        - name: varlog
+          mountPath: /var/log
+        - name: dockercontainerlogdirectory
+          mountPath: /var/log/pods
+          readOnly: true
+        resources:
+          limits:
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 1024Mi
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: dockercontainerlogdirectory
+        hostPath:
+          path: /var/log/pods
+      - name: fluentdjson
+        configMap:
+          name: fluentd-json-ib

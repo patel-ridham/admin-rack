@@ -1,0 +1,255 @@
+apiVersion: logstash.k8s.elastic.co/v1alpha1
+kind: Logstash
+metadata:
+  name: logstash
+  namespace: elastic-system
+spec:
+  version: 9.1.0
+  count: 2
+  elasticsearchRefs:
+    - name: elasticsearch
+      clusterName: elasticsearch
+  podTemplate:
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+  volumeClaimTemplates:
+    - metadata:
+        name: logstash-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        storageClassName: cephfs
+        resources:
+          requests:
+            storage: 50Gi
+  pipelines:
+    - pipeline.id: qpool-pipeline
+      config.string: |
+        input {
+          kafka {
+            bootstrap_servers => "kafka-release.kafka.svc.cluster.local:9092"
+            topics => ["qpool_raw"]
+            group_id => "qpool_raw"
+            auto_offset_reset => "latest"
+            max_partition_fetch_bytes => "5242880"
+            decorate_events => true
+            codec => "json"
+          }
+        }
+        filter {
+          if [collection_timestamp] {
+            date {
+              match => [ "collection_timestamp", "UNIX_MS" ]
+              target => "@timestamp"
+              remove_field => ["collection_timestamp"]
+            }
+          }
+
+          ruby {
+            code => '
+              kafka_meta = event.get("[@metadata][kafka]")
+              if kafka_meta
+                event.set("kafka_offset", kafka_meta["offset"])
+              end
+            '
+          }
+
+          mutate {
+            remove_field => [ "[@metadata]", "kafka_partition", "kafka_topic", "kafka_consumer_group" ]
+          }
+        }
+
+        output {
+          elasticsearch {
+            hosts => ["https://elasticsearch-es-http.elastic-system.svc:9200"]
+            user => "elastic"
+            password => "U417q63v27JkYq0EDN2Ryz8O"
+            ssl_enabled => true
+            ssl_verification_mode => "none"
+            index => "qpool_raw-%{+YYYY.MM.dd}"
+          }
+        }
+    - pipeline.id: sel-raw-pipeline
+      config.string: |
+        input {
+          kafka {
+            bootstrap_servers => "kafka-release.kafka.svc.cluster.local:9092"
+            topics => ["bmc_sel"]
+            group_id => "bmc_sel"
+            auto_offset_reset => "latest"
+            max_partition_fetch_bytes => "5242880"
+            decorate_events => true
+            codec => "json"
+          }
+        }
+        filter {
+          if [collection_timestamp] {
+            date {
+              match => [ "collection_timestamp", "UNIX_MS" ]
+              target => "@timestamp"
+              remove_field => ["collection_timestamp"]
+            }
+          }
+
+          ruby {
+            code => '
+              kafka_meta = event.get("[@metadata][kafka]")
+              if kafka_meta
+                event.set("kafka_offset", kafka_meta["offset"])
+              end
+            '
+          }
+
+          mutate {
+            remove_field => [ "[@metadata]", "kafka_partition", "kafka_topic", "kafka_consumer_group" ]
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => ["https://elasticsearch-es-http.elastic-system.svc:9200"]
+            user => "elastic"
+            password => "U417q63v27JkYq0EDN2Ryz8O"
+            ssl_enabled => true
+            ssl_verification_mode => "none"
+            index => "eventlog_raw-%{+YYYY.MM}"
+          }
+        }
+    - pipeline.id: sol-raw-pipeline
+      config.string: |
+        input {
+          kafka {
+            bootstrap_servers => "kafka-release.kafka.svc.cluster.local:9092"
+            topics => ["bmc_sol"]
+            group_id => "bmc_sol"
+            auto_offset_reset => "latest"
+            max_partition_fetch_bytes => "5242880"
+            decorate_events => true
+            codec => "json"
+          }
+        }
+        filter {
+          if [collection_timestamp] {
+            date {
+              match => [ "collection_timestamp", "UNIX_MS" ]
+              target => "@timestamp"
+              remove_field => ["collection_timestamp"]
+            }
+          }
+
+          ruby {
+            code => '
+              kafka_meta = event.get("[@metadata][kafka]")
+              if kafka_meta
+                event.set("kafka_offset", kafka_meta["offset"])
+              end
+            '
+          }
+
+          mutate {
+            remove_field => [ "[@metadata]", "kafka_partition", "kafka_topic", "kafka_consumer_group" ]
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => ["https://elasticsearch-es-http.elastic-system.svc:9200"]
+            user => "elastic"
+            password => "U417q63v27JkYq0EDN2Ryz8O"
+            ssl_enabled => true
+            ssl_verification_mode => "none"
+            index => "sol_raw-%{+YYYY.MM}"
+          }
+        }
+    - pipeline.id: journal-raw-pipeline
+      config.string: |
+        input {
+          kafka {
+            bootstrap_servers => "kafka-release.kafka.svc.cluster.local:9092"
+            topics => ["bmc_journal"]
+            group_id => "bmc_journal"
+            auto_offset_reset => "latest"
+            max_partition_fetch_bytes => "5242880"
+            decorate_events => true
+            codec => "json"
+          }
+        }
+        filter {
+          if [collection_timestamp] {
+            date {
+              match => [ "collection_timestamp", "UNIX_MS" ]
+              target => "@timestamp"
+              remove_field => ["collection_timestamp"]
+            }
+          }
+
+          ruby {
+            code => '
+              kafka_meta = event.get("[@metadata][kafka]")
+              if kafka_meta
+                event.set("kafka_offset", kafka_meta["offset"])
+              end
+            '
+          }
+
+          mutate {
+            remove_field => [ "[@metadata]", "kafka_partition", "kafka_topic", "kafka_consumer_group" ]
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => ["https://elasticsearch-es-http.elastic-system.svc:9200"]
+            user => "elastic"
+            password => "U417q63v27JkYq0EDN2Ryz8O"
+            ssl_enabled => true
+            ssl_verification_mode => "none"
+            index => "journal_raw-%{+YYYY.MM}"
+          }
+        }
+    - pipeline.id: crashdump-pipeline
+      config.string: |
+        input {
+          kafka {
+            bootstrap_servers => "kafka-release.kafka.svc.cluster.local:9092"
+            topics => ["crashdumps"]
+            group_id => "crashdumps"
+            auto_offset_reset => "latest"
+            max_partition_fetch_bytes => "5242880"
+            decorate_events => true
+            codec => "json"
+          }
+        }
+        filter {
+          if [collection_timestamp] {
+            date {
+              match => [ "collection_timestamp", "UNIX_MS" ]
+              target => "@timestamp"
+              remove_field => ["collection_timestamp"]
+            }
+          }
+
+          ruby {
+            code => '
+              kafka_meta = event.get("[@metadata][kafka]")
+              if kafka_meta
+                event.set("kafka_offset", kafka_meta["offset"])
+              end
+            '
+          }
+
+          mutate {
+            remove_field => [ "[@metadata]", "kafka_partition", "kafka_topic", "kafka_consumer_group" ]
+          }
+        }
+        output {
+          elasticsearch {
+            hosts => ["https://elasticsearch-es-http.elastic-system.svc:9200"]
+            user => "elastic"
+            password => "U417q63v27JkYq0EDN2Ryz8O"
+            ssl_enabled => true
+            ssl_verification_mode => "none"
+            index => "crashdumps_raw-%{+YYYY.MM}"
+          }
+        }
