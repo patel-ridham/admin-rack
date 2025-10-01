@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-sol-exporter
+  namespace: oob
+  labels:
+    app: bmc-sol-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-sol-exporter
+  template:
+    metadata:
+      labels:
+        app: bmc-sol-exporter
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-sol-exporter
+          image: registry.intel.local:5000/bmc-sol-collector:0.1.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: INVENTORY_FILE
+              value: "/inventory/targets.json"
+          volumeMounts:
+            - name: inventory-volume
+              mountPath: "/inventory"
+            - name: tmp-logs
+              mountPath: /tmp
+              
+        - name: fluentd-sidecar
+          image: registry.intel.local:5000/fluentd-kafka:v1
+          env:
+            - name: FLUENTD_CONF
+              value: "fluentd-kafka.conf"
+          volumeMounts:
+            - name: tmp-logs
+              mountPath: /logs
+            - name: fluentd-config-sol
+              mountPath: /fluentd/etc
+          resources:
+            limits:
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+              
+      volumes:
+        - name: inventory-volume
+          configMap:
+            name: inventory-json
+        - name: tmp-logs
+          emptyDir: {}
+        - name: fluentd-config-sol
+          configMap:
+            name: fluentd-config-sol

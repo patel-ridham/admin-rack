@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-sel-exporter
+  namespace: oob
+  labels:
+    app: bmc-sel-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-sel-exporter
+  template:
+    metadata:
+      labels:
+        app: bmc-sel-exporter
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-sel-exporter
+          image: registry.intel.local:5000/bmc-sel-collector:0.1.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: KAFKA_BROKERS
+              value: "kafka-release-controller-0.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-1.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-2.kafka-release-controller-headless.kafka.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "bmc_sel"
+            - name: INVENTORY_FILE
+              value: "/inventory/targets.json"
+          volumeMounts:
+            - name: inventory-volume
+              mountPath: "/inventory"
+      volumes:
+        - name: inventory-volume
+          configMap:
+            name: inventory-json
