@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-crashdump-collector
+  namespace: oob
+  labels:
+    app: bmc-crashdump-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-crashdump-collector
+  template:
+    metadata:
+      labels:
+        app: bmc-crashdump-collector
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-crashdump-collector
+          image: registry.intel.local:5000/bmc-crashdump-collector:0.11.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: INVENTORY_FILE
+              value: "/inventory/targets.json"
+            - name: KAFKA_BROKERS
+              value: "kafka-release-controller-0.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-1.kafka-release-controller-headless.kafka.svc.cluster.local:9092,kafka-release-controller-2.kafka-release-controller-headless.kafka.svc.cluster.local:9092"
+            - name: KAFKA_TOPIC
+              value: "crashdumps"
+            - name: DUMP_PATH
+              value: "/crashdump"
+            - name: CSCRIPT_ANALYZER_JSON
+              value: "http://bmc-crashdump-summarizer.oob.svc.cluster.local:8080/crashdump/summarize_json"
+            - name: CSCRIPT_ANALYZER_TEXT
+              value: "http://bmc-crashdump-summarizer.oob.svc.cluster.local:8080/crashdump/summarize_text"
+            - name: CSCRIPT_ANALYZER_JSON_FILE
+              value: "http://bmc-crashdump-summarizer.oob.svc.cluster.local:8080/crashdump/summarize_json_file"
+            - name: CSCRIPT_ANALYZER_TEXT_FILE
+              value: "http://bmc-crashdump-summarizer.oob.svc.cluster.local:8080/crashdump/summarize_text_file"
+          volumeMounts:
+            - name: inventory-volume
+              mountPath: "/inventory"
+            - name: crashdump-volume
+              mountPath: "/crashdump"
+      volumes:
+        - name: inventory-volume
+          configMap:
+            name: inventory-json
+        - name: crashdump-volume
+          persistentVolumeClaim:
+            claimName: crashdump-pvc

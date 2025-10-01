@@ -1,0 +1,62 @@
+clusterId: "ZTAaYTAzYzcyMzQ1NDM5Yj"
+image:
+  registry: docker.io
+  repository: bitnamilegacy/kafka
+  tag: 4.0.0-debian-12-r10
+controller:
+  replicaCount: 3
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+  nodeSelector:
+    node-role.kubernetes.io/control-plane: ""
+  persistence:
+    enabled: true
+    storageClass: cephfs
+    size: 50Gi
+  resources:
+    requests:
+      cpu: 2
+      ephemeral-storage:  2Gi
+      memory: 512Mi
+    limits:
+      cpu: 3
+      ephemeral-storage:  2Gi
+      memory: 1024Mi
+
+service:
+  type: ClusterIP
+
+kraft:
+  enabled: true
+  replicas: 3
+  zookeeper:
+    enabled: false
+
+externalAccess:
+  enabled: false
+  autoDiscovery: true
+
+volumePermissions:
+  enabled: true
+
+
+listeners:
+  client:
+    protocol: 'PLAINTEXT'
+  controller:
+    protocol: 'PLAINTEXT'
+
+extraEnvVars:
+  - name: KAFKA_ENABLE_KRAFT
+    value: "true"
+  - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+    value: "true"
+  - name: KAFKA_CFG_DELETE_TOPICS_ENABLE
+    value: "true"
+  - name: KAFKA_CFG_SOCKET_REQUEST_MAX_BYTES
+    value: "10485760"
+    
+kafkaConfigurationOverrides:
+  "max.partition.fetch.bytes": 5242880

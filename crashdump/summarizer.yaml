@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: crashdump-pvc
+  namespace: oob
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: cephfs
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bmc-crashdump-summarizer
+  namespace: oob
+  labels:
+    app: bmc-crashdump-summarizer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bmc-crashdump-summarizer
+  template:
+    metadata:
+      labels:
+        app: bmc-crashdump-summarizer
+    spec:
+      tolerations:
+        - key: "node-role.kubernetes.io/control-plane"
+          operator: "Exists"
+          effect: "NoSchedule"
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      containers:
+        - name: bmc-crashdump-summarizer
+          image: registry.intel.local:5000/bmc-crashdump-summarizer:0.80.0
+          ports:
+            - containerPort: 8080
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: INVENTORY_FILE
+              value: "/inventory/targets.json"
+          volumeMounts:
+            - name: inventory-volume
+              mountPath: "/inventory"
+            - name: crashdump-volume
+              mountPath: "/crashdump"
+      volumes:
+        - name: inventory-volume
+          configMap:
+            name: inventory-json
+        - name: crashdump-volume
+          persistentVolumeClaim:
+            claimName: crashdump-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bmc-crashdump-summarizer
+  namespace: oob
+spec:
+  type: ClusterIP
+  selector:
+    app: bmc-crashdump-summarizer
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
