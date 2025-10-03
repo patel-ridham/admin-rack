@@ -1,0 +1,18 @@
+---
+- name: Run Proxy Configuration Scripts
+  hosts: all
+  become: true
+  tasks:
+    - name: Copy the proxy configuration script to the remote machine
+      copy:
+        src: ./install.sh
+        dest: /tmp/configure_proxy_with_backup_removal.sh
+        mode: '0755'
+
+    - name: Run the proxy configuration script
+      command: /tmp/configure_proxy_with_backup_removal.sh
+      register: script_output
+
+    - name: Show the output of the script execution
+      debug:
+        var: script_output.stdout
