@@ -78,8 +78,8 @@ WorkingDirectory=$COREDNS_CONFIG_DIR
 ExecStart=$COREDNS_BINARY_PATH -conf $COREDNS_CONFIG_FILE
 Restart=on-failure
 RestartSec=5s
-StandardOutput=journal
-StandardError=journal
+StandardOutput=append:/var/log/coredns.stdout.log
+StandardError=append:/var/log/coredns.stdout.log
 [Install]
 WantedBy=multi-user.target
 EOF
