@@ -1,0 +1,12 @@
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: pvst
+spec:
+  groups:
+  - system:authenticated
+  request: |
+    LS0tLS1CRUdJTiBDRVJUS
+  signerName: kubernetes.io/kube-apiserver-client
+  usages:
+  - client auth

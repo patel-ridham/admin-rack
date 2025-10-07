@@ -1,0 +1,1 @@
+/opt/bitnami/kafka/bin/kafka-configs.sh --bootstrap-server localhost:9092 --alter --entity-type topics --entity-name bmc_journal --add-config max.message.bytes=10485760

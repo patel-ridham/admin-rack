@@ -1,0 +1,31 @@
+openssl genrsa -out pvst.key 2048
+
+openssl req -new -key pvst.key -out pvst.csr -subj "/CN=pvst/O=dev-team"
+
+
+cat pvst.csr | base64 | tr -d "\n"
+
+
+kubectl apply -f pvst-csr.yaml
+kubectl certificate approve pvst
+
+
+kubectl get csr pvst -o jsonpath='{.status.certificate}' | base64 -d > pvst.crt
+
+
+
+
+
+kubectl config set-credentials pvst \
+  --client-certificate=pvst.crt \
+  --client-key=pvst.key \
+  --embed-certs=true
+
+kubectl config set-context pvst-context \
+  --cluster=cluster.local \
+  --namespace=default \
+  --user=pvst
+
+
+
+kubectl config use-context pvst@cluster.local

@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pvst-admin
+rules:
+- apiGroups: [""]
+  resources: ["*"]
+  verbs: ["*"]
+- apiGroups: ["apps", "batch", "extensions", "networking.k8s.io", "rbac.authorization.k8s.io", "policy", "autoscaling"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pvst-admin-binding
+  namespace: default
+subjects:
+- kind: User
+  name: pvst
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pvst-admin
+  apiGroup: rbac.authorization.k8s.io

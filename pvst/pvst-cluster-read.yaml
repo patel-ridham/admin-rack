@@ -1,0 +1,27 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: pvst-read-only
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "nodes", "namespaces", "persistentvolumeclaims", "persistentvolumes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["apps", "batch", "extensions", "networking.k8s.io", "rbac.authorization.k8s.io", "policy", "autoscaling"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pvst-read-only-binding
+subjects:
+- kind: User
+  name: pvst
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: pvst-read-only
+  apiGroup: rbac.authorization.k8s.io
