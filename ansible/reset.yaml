@@ -1,0 +1,66 @@
+# uninstall_k8s_containerd_centos9.yaml
+---
+- name: Uninstall Kubernetes packages and containerd (CentOS Stream 9)
+  hosts: all
+  become: true
+
+  vars:
+    remove_containerd: true
+    remove_kubernetes_repo: false   # set true if you also want to delete the repo file we added
+
+  tasks:
+    - name: Stop kubelet if running
+      systemd:
+        name: kubelet
+        state: stopped
+      ignore_errors: true
+
+    - name: Disable kubelet autostart
+      systemd:
+        name: kubelet
+        enabled: false
+      ignore_errors: true
+
+    - name: Stop containerd if running
+      systemd:
+        name: containerd
+        state: stopped
+      ignore_errors: true
+      when: remove_containerd
+
+    - name: Disable containerd autostart
+      systemd:
+        name: containerd
+        enabled: false
+      ignore_errors: true
+      when: remove_containerd
+
+    # Remove version locks we added for kube packages
+    - name: Remove versionlock entries (kubelet/kubeadm/kubectl)
+      shell: |
+        dnf versionlock delete kubelet || true
+        dnf versionlock delete kubeadm || true
+        dnf versionlock delete kubectl || true
+      args:
+        executable: /bin/bash
+
+    - name: Uninstall Kubernetes packages
+      dnf:
+        name:
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: absent
+
+    - name: Uninstall containerd
+      dnf:
+        name: containerd.io
+        state: absent
+      when: remove_containerd
+      ignore_errors: true
+
+    - name: Remove Kubernetes yum repo file (optional)
+      file:
+        path: /etc/yum.repos.d/kubernetes.repo
+        state: absent
+      when: remove_kubernetes_repo

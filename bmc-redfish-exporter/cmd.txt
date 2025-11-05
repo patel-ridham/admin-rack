@@ -1,1 +1,3 @@
+kubectl apply -f bmc.yaml
+
 helm install monitoring prometheus-community/kube-prometheus-stack -f values.yaml --namespace monitoring

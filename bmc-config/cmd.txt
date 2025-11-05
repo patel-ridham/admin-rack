@@ -1,1 +1,3 @@
 kubectl create configmap inventory-json --from-file=targets.json=./targets.json -n oob
+
+kubectl apply -f config.yaml
