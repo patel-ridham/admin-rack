@@ -18,8 +18,8 @@ certificatesDir: /etc/kubernetes/pki
 
 apiServer:
   certSANs:
-    - "k8s.intel.local"
     - "{{ ansible_host }}"
+    - "k8s.intel.local"
     - "127.0.0.1"
   timeoutForControlPlane: 4m0s
 
