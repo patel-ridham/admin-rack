@@ -14,7 +14,3 @@
   tasks:
     - name: Execute join command
       command: "{{ hostvars[groups['Master'][0]].join_command.stdout }} --cri-socket /run/containerd/containerd.sock --ignore-preflight-errors=NumCPU,Mem"
-
-    - name: Label the node
-      command: kubectl label node {{ inventory_hostname }} node-role.kubernetes.io/worker=worker
-      delegate_to: Master
