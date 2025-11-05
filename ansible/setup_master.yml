@@ -27,26 +27,27 @@
       register: kubeadm_init
       changed_when: kubeadm_init.rc == 0
 
-    - name: Create .kube directory
+    - name: Remove old kube config if exists
       file:
-        path: /{{ ansible_user }}/.kube
+        path: "/{{ ansible_user }}/.kube/config"
+        state: absent
+
+    - name: Ensure .kube directory exists
+      file:
+        path: "/{{ ansible_user }}/.kube"
         state: directory
-        mode: '0755'
-        owner: "{{ ansible_user }}"
-
-    - name: Copy Kubernetes admin.conf to user's home directory
-      copy:
-        src: /etc/kubernetes/admin.conf
-        dest: /{{ ansible_user }}/.kube/config
-        owner: "{{ ansible_user }}"
-        mode: '0644'
-
-    - name: Change ownership of admin.conf
-      file:
-        path: /{{ ansible_user }}/.kube/config
+        mode: '0700'
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
-        mode: '0644'
+
+    - name: Copy admin.conf to kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: "/{{ ansible_user }}/.kube/config"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: '0600'
+
 
     - name: Install Flannel CNI
       command: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
