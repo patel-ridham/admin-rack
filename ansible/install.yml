@@ -50,8 +50,10 @@
     - name: set SystemdCgroup true + restart containerd
       shell: |
         mkdir -p /etc/containerd
-        [ ! -f /etc/containerd/config.toml ] && containerd config default > /etc/containerd/config.toml
+        containerd config default > /etc/containerd/config.toml
+        mkdir ~/test
         sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+        mkdir ~/test2
         systemctl restart containerd
 
     - name: enable/start containerd
