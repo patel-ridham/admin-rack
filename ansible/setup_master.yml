@@ -5,7 +5,7 @@
   become: true
   vars:
     local_kubeadmin_config: "./kubeadm-conf.j2"
-    remote_kubeadmin_config: "/home/{{ ansible_user }}/kubeadm-conf.yaml"
+    remote_kubeadmin_config: "/{{ ansible_user }}/kubeadm-conf.yaml"
   tasks:
     - name: Copy kubeadmin-config.yaml to remote machine
       template:
