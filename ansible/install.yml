@@ -49,17 +49,13 @@
 
     - name: Generate containerd config
       command: containerd config default | tee /etc/containerd/config.toml
-      # ansible.builtin.shell: |
-      #   containerd config default | tee /etc/containerd/config.toml >/dev/null
-      # args:
-      #   creates: /etc/containerd/config.toml
+      creates: /etc/containerd/config.toml
 
     - name: Enable systemd cgroup driver in containerd
       ansible.builtin.replace:
         path: /etc/containerd/config.toml
-        regexp: 'SystemdCgroup\s*=\s*false'
-        replace: 'SystemdCgroup = true'
-      notify: Restart containerd
+        regexp: '^(\s*)SystemdCgroup\s*=\s*false'
+        replace: '\1SystemdCgroup = true'
 
     - name: enable/start containerd
       systemd:
