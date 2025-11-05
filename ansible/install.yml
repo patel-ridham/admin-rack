@@ -47,20 +47,18 @@
         name: containerd.io
         state: present
 
-    - name: set SystemdCgroup true + restart containerd
-      shell: |
-        mkdir -p /etc/containerd
-        containerd config default > /etc/containerd/config.toml
-        mkdir ~/test
-        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-        mkdir ~/test2
-        systemctl restart containerd
-
     - name: enable/start containerd
       systemd:
         name: containerd
         enabled: true
         state: started
+
+    - name: set SystemdCgroup true + restart containerd
+      shell: |
+        mkdir -p /etc/containerd
+        containerd config default > /etc/containerd/config.toml
+        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+        systemctl restart containerd
 
     - name: add kubernetes repo
       copy:
