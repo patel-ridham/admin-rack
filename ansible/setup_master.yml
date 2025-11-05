@@ -29,12 +29,12 @@
 
     - name: Remove old kube config if exists
       file:
-        path: "/{{ ansible_user }}/.kube/config"
+        path: "~/.kube/config"
         state: absent
 
     - name: Ensure .kube directory exists
       file:
-        path: "/{{ ansible_user }}/.kube"
+        path: "~/.kube"
         state: directory
         mode: '0700'
         owner: "{{ ansible_user }}"
@@ -43,7 +43,7 @@
     - name: Copy admin.conf to kube config
       copy:
         src: /etc/kubernetes/admin.conf
-        dest: "/{{ ansible_user }}/.kube/config"
+        dest: "~/.kube/config"
         owner: "{{ ansible_user }}"
         group: "{{ ansible_user }}"
         mode: '0600'
