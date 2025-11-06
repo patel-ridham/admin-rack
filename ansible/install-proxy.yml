@@ -1,12 +1,46 @@
 # setup_containerd_kubernetes_centos9.yaml
 ---
-- name: Install containerd + Kubernetes on CentOS Stream 9
+- name: Install containerd + Kubernetes on CentOS Stream 9 (with Proxy Support)
   hosts: all
   become: true
+  vars:
+    http_proxy: "http://proxy.example.com:8080"
+    https_proxy: "http://proxy.example.com:8080"
+    no_proxy: "localhost,127.0.0.1,::1,10.0.0.0/8,192.168.0.0/16"
 
   tasks:
-    
-    - name: dnf update with skip-broken + nobest + allowerasing
+    - name: Copy the proxy configuration script to the remote machine
+      copy:
+        src: ./install.sh
+        dest: /tmp/configure_proxy_with_backup_removal.sh
+        mode: '0755'
+
+    - name: Run the proxy configuration script
+      command: /tmp/configure_proxy_with_backup_removal.sh
+      register: script_output
+
+    - name: Configure system-wide proxy environment
+      copy:
+        dest: /etc/profile.d/proxy.sh
+        mode: '0644'
+        content: |
+          export http_proxy={{ http_proxy }}
+          export https_proxy={{ https_proxy }}
+          export no_proxy={{ no_proxy }}
+      notify: reload environment
+
+    - name: Set proxy for dnf
+      lineinfile:
+        path: /etc/dnf/dnf.conf
+        regexp: '^proxy='
+        line: "proxy={{ http_proxy }}"
+        create: yes
+
+    - name: dnf update with proxy + skip-broken + nobest + allowerasing
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       dnf:
         name: "*"
         state: latest
@@ -15,6 +49,10 @@
         allowerasing: true
 
     - name: install required pkgs
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       dnf:
         name:
           - curl
@@ -30,11 +68,18 @@
       command: dnf config-manager --enable crb
       changed_when: false
     
-    - name: Add Docker repo
+    - name: Add Docker repo (through proxy)
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
       command: dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
       changed_when: false
 
-    - name: dnf update with skip-broken + nobest + allowerasing
+    - name: dnf update again with proxy
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       dnf:
         name: "*"
         state: latest
@@ -42,8 +87,10 @@
         nobest: true
         allowerasing: true
 
-
     - name: Install containerd
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
       dnf:
         name: containerd.io
         state: present
@@ -61,7 +108,7 @@
         sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
         systemctl restart containerd
 
-    - name: add kubernetes repo
+    - name: add kubernetes repo (with proxy vars)
       copy:
         dest: /etc/yum.repos.d/kubernetes.repo
         mode: '0644'
@@ -74,10 +121,17 @@
           gpgkey=https://pkgs.k8s.io/core:/stable:/v1.33/rpm/repodata/repomd.xml.key
 
     - name: dnf cache update
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
+        no_proxy: "{{ no_proxy }}"
       dnf:
         update_cache: true
 
     - name: install kubernetes
+      environment:
+        http_proxy: "{{ http_proxy }}"
+        https_proxy: "{{ https_proxy }}"
       dnf:
         name:
           - kubelet-1.33.5-150500.1.1
@@ -154,3 +208,51 @@
       systemd:
         name: kubelet
         enabled: true
+
+    # ----------------------------------------------
+    # Proxy for containerd + kubelet systemd services
+    # ----------------------------------------------
+
+    - name: Ensure containerd systemd drop-in directory exists
+      file:
+        path: /etc/systemd/system/containerd.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Create containerd proxy config
+      copy:
+        dest: /etc/systemd/system/containerd.service.d/proxy.conf
+        mode: '0644'
+        content: |
+          [Service]
+          Environment="HTTP_PROXY={{ http_proxy }}"
+          Environment="HTTPS_PROXY={{ https_proxy }}"
+          Environment="NO_PROXY={{ no_proxy }}"
+
+    - name: Ensure kubelet systemd drop-in directory exists
+      file:
+        path: /etc/systemd/system/kubelet.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Create kubelet proxy config
+      copy:
+        dest: /etc/systemd/system/kubelet.service.d/proxy.conf
+        mode: '0644'
+        content: |
+          [Service]
+          Environment="HTTP_PROXY={{ http_proxy }}"
+          Environment="HTTPS_PROXY={{ https_proxy }}"
+          Environment="NO_PROXY={{ no_proxy }}"
+
+    - name: Reload systemd and restart daemons to apply proxy settings
+      shell: |
+        systemctl daemon-reexec
+        systemctl daemon-reload
+        systemctl restart containerd
+        systemctl restart kubelet
+      changed_when: true
+
+  handlers:
+    - name: reload environment
+      shell: source /etc/profile.d/proxy.sh
