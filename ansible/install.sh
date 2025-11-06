@@ -5,7 +5,7 @@ echo "Updating proxy settings..."
 PROXY_URL="http://proxy-iind.intel.com:912"
 HTTP_PROXY="http_proxy=$PROXY_URL"
 HTTPS_PROXY="https_proxy=$PROXY_URL"
-NO_PROXY="no_proxy=127.0.0.1,localhost,.intel.com,.cluster.local,.intel.local,169.254.25.10/32,10.233.0.0/18,10.49.92.0/23"
+NO_PROXY="no_proxy=127.0.0.1,localhost,.intel.com,.cluster.local,.intel.local,10.233.0.0/18,10.49.92.0/23"
 
 # Check if /etc/environment file exists
 if [ ! -f /etc/environment ]; then
